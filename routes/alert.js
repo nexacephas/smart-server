@@ -1,36 +1,52 @@
-import express from "express";
-import axios from "axios";
-import dotenv from "dotenv";
+// routes/alertRoutes.js
+const express = require("express");
+const axios = require("axios");
+const dotenv = require("dotenv");
+const { sendSMS } = require("../utils/sms");
 
 dotenv.config();
 const router = express.Router();
 
-// Example user profile store (later you’ll fetch from DB)
+// Example user profile store (for Telegram alerts)
 let userSettings = {
-  meterId: "MTR-001", // default
+  meterId: "MTR-001",
   name: "",
   phone: "",
   country: "",
   state: "",
   town: "",
-  email: ""
+  email: "",
 };
 
-// API to update settings from frontend (sync with Settings.js form)
+// Route to send SMS alerts
+router.post("/send-sms", async (req, res) => {
+  try {
+    const { phone, text } = req.body;
+    if (!phone || !text) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Phone and text required" });
+    }
+
+    await sendSMS(phone, text);
+    res.json({ success: true, message: "SMS sent successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Route to update user settings (used by frontend Settings page)
 router.post("/update-settings", (req, res) => {
   userSettings = { ...userSettings, ...req.body };
   res.json({ success: true, message: "Settings updated", data: userSettings });
 });
 
-// Theft detection alert
+// Route to send theft detection alerts to Telegram
 router.post("/send-telegram", async (req, res) => {
   try {
-    const { status } = req.body; // e.g., "Tampering Detected"
-
-    // Build location string
+    const { status } = req.body;
     const location = `${userSettings.town}, ${userSettings.state}, ${userSettings.country}`;
 
-    // Alert message format 🚨
     const message = `
 🚨 Theft Detection Alert!
 
@@ -40,13 +56,12 @@ router.post("/send-telegram", async (req, res) => {
 ⚡ Status: ${status}
 `;
 
-    // Send to Telegram
     await axios.post(
       `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
       {
         chat_id: process.env.TELEGRAM_CHAT_ID,
         text: message,
-        parse_mode: "Markdown"
+        parse_mode: "Markdown",
       }
     );
 
@@ -57,4 +72,4 @@ router.post("/send-telegram", async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

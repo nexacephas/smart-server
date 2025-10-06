@@ -36,6 +36,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- Import Routes ---
+const statsRoutes = require("./routes/stats");
+const chartRoutes = require("./routes/chart");
+const billingRoutes = require("./routes/billing");
+const reportRoutes = require("./routes/report");
+const alertRoutes = require("./routes/alert");
+const chatRoutes = require("./routes/aiChat.js"); // your OpenAI route
+
+// --- Mount Routes ---
+app.use("/api/stats", statsRoutes);
+app.use("/api/chart", chartRoutes);
+app.use("/api/billing", billingRoutes);
+app.use("/api/report", reportRoutes);
+app.use("/api/alert", alertRoutes);
+app.use("/api/chat", chatRoutes);
+
 // --- In-memory user settings store ---
 let userSettings = {
   meterId: "MTR-001",
@@ -44,7 +60,7 @@ let userSettings = {
   country: "",
   state: "",
   town: "",
-  email: ""
+  email: "",
 };
 
 // --- Helper: fetch last 24h stats ---
@@ -93,7 +109,7 @@ cron.schedule("0 8 * * *", async () => {
 
 // --- Default route ---
 app.get("/", (req, res) => {
-  res.send("Smart Meter Backend Running!");
+  res.send("✅ Smart Meter Backend Running!");
 });
 
 // --- Manual test report ---
@@ -106,51 +122,6 @@ app.get("/test-report", async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
-});
-
-// --- SMS alert route ---
-app.post("/api/alert/send-sms", async (req, res) => {
-  try {
-    const { phone, text } = req.body;
-    if (!phone || !text) return res.status(400).json({ success: false, error: "Phone and text required" });
-
-    await sendSMS(phone, text);
-    res.json({ success: true, message: "SMS alert sent!" });
-  } catch (err) {
-    console.error("❌ Error sending SMS:", err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// --- Telegram alert route ---
-app.post("/api/alert/send-telegram", async (req, res) => {
-  try {
-    const { status } = req.body;
-    const details = {
-      meterId: userSettings.meterId,
-      location: `${userSettings.town}, ${userSettings.state}, ${userSettings.country}`,
-      time: new Date().toLocaleString(),
-      status: status || "Tampering Detected"
-    };
-
-    await sendTheftAlert(details);
-    res.json({ success: true, message: "Telegram alert sent!" });
-  } catch (err) {
-    console.error("❌ Error sending Telegram alert:", err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// --- Update user settings route ---
-app.post("/api/alert/update-settings", (req, res) => {
-  const { name, phone, country, state, town, email } = req.body;
-  if (!name || !phone || !country || !state || !town || !email) {
-    return res.status(400).json({ success: false, error: "All fields required" });
-  }
-
-  userSettings = { ...userSettings, name, phone, country, state, town, email };
-  console.log("📌 Updated user settings:", userSettings);
-  res.json({ success: true, message: "Settings updated", data: userSettings });
 });
 
 // --- Start server ---
