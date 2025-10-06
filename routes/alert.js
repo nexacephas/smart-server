@@ -9,7 +9,7 @@ const router = express.Router();
 
 // Example user profile store (for Telegram alerts)
 let userSettings = {
-  meterId: "MTR-001",
+  // 🔒 meterId is no longer editable — hardcoded below
   name: "",
   phone: "",
   country: "",
@@ -46,14 +46,15 @@ router.post("/send-telegram", async (req, res) => {
   try {
     const { status } = req.body;
     const location = `${userSettings.town}, ${userSettings.state}, ${userSettings.country}`;
+    const meterId = "MTR-001"; // 🔒 Hardcoded Meter ID
 
     const message = `
 🚨 Theft Detection Alert!
 
-📟 Meter ID: ${userSettings.meterId}
-📍 Location: ${location}
+📟 Meter ID: ${meterId}
+📍 Location: ${location || "Unknown"}
 ⏰ Time: ${new Date().toLocaleString()}
-⚡ Status: ${status}
+⚡ Status: ${status || "Unknown"}
 `;
 
     await axios.post(
